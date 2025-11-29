@@ -1,1 +1,132 @@
-<h1>Web Developer Work This Website</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat Simulator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  #chat-container {
+    width: 400px;
+    max-height: 600px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .message {
+    margin: 10px 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    max-width: 80%;
+  }
+  .user { background: #007bff; color: white; align-self: flex-end; }
+  .ai { background: #e5e5ea; color: black; align-self: flex-start; }
+  #input-container {
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+  #user-input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    font-size: 16px;
+  }
+  #send-btn {
+    padding: 10px 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  .thinking {
+    font-style: italic;
+    color: gray;
+  }
+</style>
+</head>
+<body>
+
+<div id="chat-container">
+  <div id="messages"></div>
+  <div id="input-container">
+    <input type="text" id="user-input" placeholder="Type your question...">
+    <button id="send-btn">Send</button>
+  </div>
+</div>
+
+<script>
+// Load AI Q&A from ai.txt
+let aiData = {};
+
+fetch('ai.txt')
+  .then(response => response.text())
+  .then(text => {
+    const lines = text.split('\n');
+    lines.forEach(line => {
+      let matchQ = line.match(/^Q\d+\s*=\s*{(.+)}$/);
+      let matchA = line.match(/^A\d+\s*=\s*{(.+)}$/);
+      if(matchQ && matchA) {
+        const q = matchQ[1].trim().replace(/\s+/g,' ').toLowerCase();
+        const a = matchA[1].trim();
+        aiData[q] = a;
+      }
+    });
+  });
+
+// Function to add message to chat
+function addMessage(content, sender) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'message ' + sender;
+  msgDiv.textContent = content;
+  document.getElementById('messages').appendChild(msgDiv);
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+
+// Handle user input
+document.getElementById('send-btn').addEventListener('click', () => {
+  const inputBox = document.getElementById('user-input');
+  let question = inputBox.value.trim();
+  if(!question) return;
+  
+  addMessage(question, 'user');
+  inputBox.value = '';
+
+  // Show thinking animation
+  addMessage('AI is thinking...', 'ai');
+  const thinkingDiv = document.querySelector('.ai:last-child');
+
+  setTimeout(() => {
+    // Remove thinking
+    thinkingDiv.remove();
+
+    // Normalize question spaces and lowercase
+    let normalizedQ = question.replace(/\s+/g,' ').toLowerCase();
+    const answer = aiData[normalizedQ] || "Sorry, I don't know the answer to that.";
+    addMessage(answer, 'ai');
+  }, 1000); // 1 second thinking
+});
+
+// Press Enter to send
+document.getElementById('user-input').addEventListener('keypress', (e) => {
+  if(e.key === 'Enter') document.getElementById('send-btn').click();
+});
+</script>
+
+</body>
+</html>
