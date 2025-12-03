@@ -1,132 +1,499 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Chat Simulator</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f8;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-  }
-  #chat-container {
-    width: 400px;
-    max-height: 600px;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #messages {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-  }
-  .message {
-    margin: 10px 0;
-    padding: 8px 12px;
-    border-radius: 10px;
-    max-width: 80%;
-  }
-  .user { background: #007bff; color: white; align-self: flex-end; }
-  .ai { background: #e5e5ea; color: black; align-self: flex-start; }
-  #input-container {
-    display: flex;
-    border-top: 1px solid #ccc;
-  }
-  #user-input {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    font-size: 16px;
-  }
-  #send-btn {
-    padding: 10px 15px;
-    background: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  .thinking {
-    font-style: italic;
-    color: gray;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Live Code Editor</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Prism.js CSS for professional code highlighting style -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css" rel="stylesheet" />
+
+    <style>
+        /* Custom Styles for Modern Editor */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Styling for the Code Input Textareas (making them look like code editors) */
+        .code-input-container {
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            background-color: #2d2d2d; /* VS Code-like dark editor background */
+            position: relative;
+        }
+
+        .code-input {
+            width: 100%;
+            height: 250px;
+            padding: 10px;
+            background-color: transparent; /* Transparent to show container background */
+            color: #cccccc; /* Light gray text */
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            border: none;
+            line-height: 1.5;
+            caret-color: #3498db; /* Blue cursor */
+            z-index: 20;
+        }
+
+        /* --- Floating Preview Window Styles --- */
+        #floating-preview {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50vw; /* Initial width */
+            height: 60vh; /* Initial height */
+            min-width: 300px;
+            min-height: 200px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none; /* Initially hidden */
+            overflow: hidden;
+            border: 1px solid #3498db;
+        }
+
+        #preview-header {
+            cursor: grab;
+            background-color: #3498db; /* Header color for dragging */
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #preview-close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        #preview-frame {
+            width: 100%;
+            height: calc(100% - 40px); /* Adjust for header height */
+            border: none;
+            background-color: white;
+        }
+
+        /* Resize handles (simple corner div for resizing) */
+        .resize-handle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #2ecc71; /* Green resize indicator */
+            z-index: 10;
+            opacity: 0.8;
+            border-radius: 3px;
+        }
+        .resize-handle.bottom-right {
+            bottom: -7px;
+            right: -7px;
+            cursor: nwse-resize;
+        }
+
+        /* Hide Scrollbar for cleaner look, still allows scrolling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+    </style>
 </head>
-<body>
+<body class="p-4 md:p-8">
 
-<div id="chat-container">
-  <div id="messages"></div>
-  <div id="input-container">
-    <input type="text" id="user-input" placeholder="Type your question...">
-    <button id="send-btn">Send</button>
-  </div>
-</div>
+    <header class="text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-blue-400">
+            Advanced Dev Compiler 🚀
+        </h1>
+        <p class="text-gray-400 mt-2">
+            HTML, CSS, JavaScript ke code ko likhein aur Live Floating Window mein dekhein.
+        </p>
+    </header>
 
-<script>
-// Load AI Q&A from ai.txt
-let aiData = {};
+    <!-- Utility and Run Panel -->
+    <div class="bg-gray-800 p-4 rounded-lg shadow-xl mb-8 flex flex-wrap items-center justify-between">
+        
+        <div class="flex space-x-4">
+            <!-- RUN Button (Now prominent) -->
+            <button onclick="showPreviewWindow()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg">
+                ▶️ RUN Code & Open Preview
+            </button>
 
-fetch('ai.txt')
-  .then(response => response.text())
-  .then(text => {
-    const lines = text.split('\n');
-    lines.forEach(line => {
-      let matchQ = line.match(/^Q\d+\s*=\s*{(.+)}$/);
-      let matchA = line.match(/^A\d+\s*=\s*{(.+)}$/);
-      if(matchQ && matchA) {
-        const q = matchQ[1].trim().replace(/\s+/g,' ').toLowerCase();
-        const a = matchA[1].trim();
-        aiData[q] = a;
-      }
-    });
-  });
+            <!-- Reset Button -->
+            <button onclick="resetEditor()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg">
+                🔄 Reset Editor
+            </button>
+        </div>
 
-// Function to add message to chat
-function addMessage(content, sender) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'message ' + sender;
-  msgDiv.textContent = content;
-  document.getElementById('messages').appendChild(msgDiv);
-  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        <!-- Image Import Option -->
+        <label for="imageLoader" class="mt-4 md:mt-0 cursor-pointer bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg text-center">
+            🖼️ Image to Data URL
+        </label>
+        <input type="file" id="imageLoader" accept="image/*" style="display: none;">
+    </div>
+
+    <!-- Code Editor Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- HTML Panel -->
+        <div class="code-panel">
+            <h3 class="text-lg font-semibold mb-2 text-yellow-400">HTML Structure</h3>
+            <div class="code-input-container">
+                <textarea id="html-code" class="code-input"></textarea>
+            </div>
+        </div>
+
+        <!-- CSS Panel -->
+        <div class="code-panel">
+            <h3 class="text-lg font-semibold mb-2 text-pink-400">CSS Styling</h3>
+            <div class="code-input-container">
+                <textarea id="css-code" class="code-input"></textarea>
+            </div>
+        </div>
+
+        <!-- JavaScript Panel -->
+        <div class="code-panel">
+            <h3 class="text-lg font-semibold mb-2 text-green-400">JavaScript Logic</h3>
+            <div class="code-input-container">
+                <textarea id="js-code" class="code-input"></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating, Resizable, and Draggable Preview Window -->
+    <div id="floating-preview" style="display: none;">
+        <div id="preview-header">
+            <span>Live Output Window (Drag/Resize Karen)</span>
+            <button id="preview-close-btn" onclick="hidePreviewWindow()">✖</button>
+        </div>
+        <iframe id="preview-frame" class="preview-frame"></iframe>
+        <!-- Resizing Handle -->
+        <div class="resize-handle bottom-right"></div>
+    </div>
+
+
+    <script>
+        // --- Default Code for initial load ---
+        const defaultHTML = `<!-- Apni HTML yahan likhein -->
+<div class="p-6 bg-yellow-100 rounded-xl shadow-lg">
+    <h1 class="text-3xl font-bold text-blue-600">Advanced Compiler Test</h1>
+    <p class="mt-2 text-gray-700">Yeh output floating window mein dikhega.</p>
+    <button id="myButton" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">
+        JS Test Button
+    </button>
+</div>`;
+
+        const defaultCSS = `/* Apni CSS yahan likhein */
+body {
+    font-family: sans-serif;
+    padding: 20px;
 }
+/* Tailwind classes will also work here! */
+`;
+        
+        const defaultJS = `// Apni JavaScript yahan likhein
+document.getElementById('myButton').onclick = function() {
+    customAlert('Success', 'JavaScript code chal gaya!');
+};
 
-// Handle user input
-document.getElementById('send-btn').addEventListener('click', () => {
-  const inputBox = document.getElementById('user-input');
-  let question = inputBox.value.trim();
-  if(!question) return;
-  
-  addMessage(question, 'user');
-  inputBox.value = '';
+// Custom Alert Function (iframe ke andar chalne ke liye)
+function customAlert(title, message) {
+    const frameDoc = document;
+    if (frameDoc.getElementById('customAlert')) return;
 
-  // Show thinking animation
-  addMessage('AI is thinking...', 'ai');
-  const thinkingDiv = document.querySelector('.ai:last-child');
+    const box = frameDoc.createElement('div');
+    box.id = 'customAlert';
+    box.innerHTML = \`
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; justify-content: center; align-items: center;">
+            <div style="background: white; padding: 25px; border-radius: 10px; max-width: 350px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-align: center; color: #333;">
+                <h3 style="margin-top: 0; color: #3498db;">\${title}</h3>
+                <p>\${message}</p>
+                <button onclick="document.getElementById('customAlert').remove()" style="margin-top: 20px; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    \`;
+    frameDoc.body.appendChild(box);
+}
+`;
+        // --- DOM Elements ---
+        const htmlInput = document.getElementById('html-code');
+        const cssInput = document.getElementById('css-code');
+        const jsInput = document.getElementById('js-code');
+        const previewFrame = document.getElementById('preview-frame');
+        const floatingPreview = document.getElementById('floating-preview');
+        const imageLoader = document.getElementById('imageLoader');
 
-  setTimeout(() => {
-    // Remove thinking
-    thinkingDiv.remove();
+        // --- Core Functions ---
 
-    // Normalize question spaces and lowercase
-    let normalizedQ = question.replace(/\s+/g,' ').toLowerCase();
-    const answer = aiData[normalizedQ] || "Sorry, I don't know the answer to that.";
-    addMessage(answer, 'ai');
-  }, 1000); // 1 second thinking
-});
+        function compileCode() {
+            const html = htmlInput.value;
+            const css = cssInput.value;
+            const js = jsInput.value;
+            
+            // Generate the final HTML document with combined code
+            const code = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Live Output</title>
+                    <style>
+                        /* User CSS */
+                        \n${css}\n
+                    </style>
+                    <!-- Tailwind CDN for preview, if user wants to use it -->
+                    <script src="https://cdn.tailwindcss.com"></script> 
+                </head>
+                <body>
+                    <!-- User HTML -->
+                    \n${html}\n
+                    <script>
+                        // User JavaScript
+                        \n${js}\n
+                    </script>
+                </body>
+                </html>
+            `;
 
-// Press Enter to send
-document.getElementById('user-input').addEventListener('keypress', (e) => {
-  if(e.key === 'Enter') document.getElementById('send-btn').click();
-});
-</script>
+            // Write the combined code to the iframe
+            previewFrame.contentWindow.document.open();
+            previewFrame.contentWindow.document.write(code);
+            previewFrame.contentWindow.document.close();
+        }
 
+        function showPreviewWindow() {
+            compileCode(); // Compile and update before showing
+            floatingPreview.style.display = 'block';
+        }
+
+        function hidePreviewWindow() {
+            floatingPreview.style.display = 'none';
+        }
+
+        function initializeEditor() {
+            // Set default values
+            htmlInput.value = defaultHTML;
+            cssInput.value = defaultCSS;
+            jsInput.value = defaultJS;
+            
+            // To make it look color-coded (Syntax Highlighting Aesthetic)
+            applyPrismAesthetics(htmlInput, 'language-html');
+            applyPrismAesthetics(cssInput, 'language-css');
+            applyPrismAesthetics(jsInput, 'language-javascript');
+
+            // Initial compilation (optional, but good for first view)
+            // compileCode(); 
+            hidePreviewWindow();
+        }
+        
+        // --- Syntax Highlighting Aesthetic (Prism.js is for static blocks, so we fake it for textarea) ---
+        // Since Prism.js doesn't work directly on editable textareas, we use a trick 
+        // to make the textarea look and feel like a modern editor.
+        function applyPrismAesthetics(textarea, languageClass) {
+            // For a true editor experience, we'd need to use a library like CodeMirror/Monaco.
+            // For this single-file prototype, we just apply the dark/monospace theme.
+            textarea.classList.add(languageClass);
+        }
+        
+        // --- Image Loading (Utility) ---
+        imageLoader.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const dataURL = event.target.result;
+                    // Copy Data URL to clipboard
+                    // Note: document.execCommand('copy') is used as navigator.clipboard may not work in iframes
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = dataURL;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    let success = document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    
+                    const message = success ? 
+                        `Image Data URL clipboard mein copy kar diya gaya hai. Aap isse seedhe &lt;img src="...DATA URL..."&gt; mein istemal kar sakte hain.` :
+                        `Data URL copy nahi ho paya. Console check karein.`;
+                        
+                    alertBox('Image Imported (Data URL)', message);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // --- Custom Alert Box (Replaces window.alert/confirm) ---
+        function alertBox(title, message) {
+            const existingAlert = document.getElementById('customAlertMain');
+            if (existingAlert) existingAlert.remove(); 
+
+            const box = document.createElement('div');
+            box.id = 'customAlertMain';
+            box.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10001; display: flex; justify-content: center; align-items: center;">
+                    <div class="bg-gray-700 p-6 rounded-lg shadow-2xl max-w-sm text-white text-center border-t-4 border-blue-500 transform scale-100 transition-transform duration-300">
+                        <h3 class="text-xl font-bold text-blue-400 mb-3">${title}</h3>
+                        <p class="text-gray-300 mb-4 text-sm">${message}</p>
+                        <button onclick="document.getElementById('customAlertMain').remove()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(box);
+        }
+
+        function resetEditor() {
+            // Custom confirmation
+            alertBox('Confirm Reset', `Kya aap waqai saara code default settings par reset karna chahte hain?`, true);
+        }
+
+        // --- Draggable and Resizable Logic for Floating Window ---
+
+        const header = document.getElementById('preview-header');
+        const resizeHandle = floatingPreview.querySelector('.resize-handle.bottom-right');
+        let isDragging = false;
+        let isResizing = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let initialW;
+        let initialH;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        // 1. Dragging Functionality
+        header.addEventListener("mousedown", dragStart);
+        document.addEventListener("mouseup", dragEnd);
+        document.addEventListener("mousemove", drag);
+
+        function dragStart(e) {
+            if (e.target !== header) return; // Only drag from the header
+            isDragging = true;
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                // Center the box after initial offset calculation
+                let x = currentX + floatingPreview.offsetWidth / 2;
+                let y = currentY + floatingPreview.offsetHeight / 2;
+
+                floatingPreview.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+            }
+        }
+
+        // 2. Resizing Functionality
+        resizeHandle.addEventListener("mousedown", resizeStart);
+        document.addEventListener("mouseup", resizeEnd);
+        document.addEventListener("mousemove", resize);
+
+        function resizeStart(e) {
+            isResizing = true;
+            initialX = e.clientX;
+            initialY = e.clientY;
+            initialW = floatingPreview.offsetWidth;
+            initialH = floatingPreview.offsetHeight;
+        }
+
+        function resizeEnd(e) {
+            isResizing = false;
+        }
+
+        function resize(e) {
+            if (isResizing) {
+                e.preventDefault();
+                const dx = e.clientX - initialX;
+                const dy = e.clientY - initialY;
+
+                floatingPreview.style.width = `${initialW + dx}px`;
+                floatingPreview.style.height = `${initialH + dy}px`;
+            }
+        }
+        
+        // --- Mobile Touch Fallback for Drag and Resize ---
+        header.addEventListener("touchstart", dragStart);
+        document.addEventListener("touchend", dragEnd);
+        document.addEventListener("touchmove", drag);
+        resizeHandle.addEventListener("touchstart", resizeStart);
+        document.addEventListener("touchend", resizeEnd);
+        document.addEventListener("touchmove", resize);
+        
+        function dragStart(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (e.target === header) {
+                isDragging = true;
+                initialX = clientX - xOffset;
+                initialY = clientY - yOffset;
+                floatingPreview.classList.add('cursor-grabbing');
+            } else if (e.target === resizeHandle) {
+                isResizing = true;
+                initialX = clientX;
+                initialY = clientY;
+                initialW = floatingPreview.offsetWidth;
+                initialH = floatingPreview.offsetHeight;
+            }
+        }
+        
+        function drag(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (isDragging) {
+                e.preventDefault();
+                currentX = clientX - initialX;
+                currentY = clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                floatingPreview.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+            } else if (isResizing) {
+                e.preventDefault();
+                const dx = clientX - initialX;
+                const dy = clientY - initialY;
+
+                floatingPreview.style.width = `${Math.max(300, initialW + dx)}px`; // Min width 300
+                floatingPreview.style.height = `${Math.max(200, initialH + dy)}px`; // Min height 200
+            }
+        }
+        
+        function dragEnd(e) {
+            isDragging = false;
+            isResizing = false;
+            floatingPreview.classList.remove('cursor-grabbing');
+        }
+
+
+        // Load defaults when the page is ready
+        window.onload = initializeEditor;
+    </script>
 </body>
 </html>
+
